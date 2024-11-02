@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Juego de Burbujas</title>
+    <title>Exploid - Juego de Burbujas</title>
     <style>
         body {
             margin: 0;
@@ -55,8 +55,54 @@
             margin: 10px;
         }
         
+        #stopBtn {
+            background-color: #ff4444;
+        }
+        
         button:hover {
-            background-color: #45a049;
+            opacity: 0.9;
+        }
+
+        #highscores {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px;
+            max-width: 300px;
+            width: 100%;
+        }
+
+        #highscores h2 {
+            color: white;
+            text-align: center;
+            margin-top: 0;
+        }
+
+        .score-item {
+            color: white;
+            margin: 10px 0;
+            padding: 5px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            display: flex;
+            justify-content: space-between;
+        }
+
+        #playerName {
+            padding: 5px;
+            margin: 10px;
+            border: none;
+            border-radius: 5px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        @media (max-width: 600px) {
+            #game-container {
+                height: 70vh;
+                margin: 10px;
+            }
         }
     </style>
 </head>
@@ -64,13 +110,33 @@
     <h1 style="color: white; text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);">¡Explota las Burbujas!</h1>
     <div id="score">Puntuación: 0</div>
     <div id="game-container"></div>
-    <button onclick="resetGame()">Reiniciar Juego</button>
+    <div>
+        <button onclick="startGame()" id="startBtn">Iniciar Juego</button>
+        <button onclick="stopGame()" id="stopBtn" class="hidden">Detener Juego</button>
+    </div>
+
+    <div id="nameInput" class="hidden">
+        <input type="text" id="playerName" placeholder="Tu nombre" maxlength="20">
+        <button onclick="saveScore()">Guardar Puntuación</button>
+    </div>
+
+    <div id="highscores">
+        <h2>Mejores Puntuaciones</h2>
+        <div id="scoresList"></div>
+    </div>
 
     <script>
         let score = 0;
-        let isGameActive = true;
+        let isGameActive = false;
         const container = document.getElementById('game-container');
         const scoreDisplay = document.getElementById('score');
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const nameInput = document.getElementById('nameInput');
+        let gameInterval;
+
+        // Cargar puntuaciones al inicio
+        loadScores();
 
         function createBubble() {
             if (!isGameActive) return;
@@ -78,12 +144,10 @@
             const bubble = document.createElement('div');
             bubble.className = 'bubble';
             
-            // Tamaño aleatorio entre 30 y 60 píxeles
             const size = Math.random() * 30 + 30;
             bubble.style.width = size + 'px';
             bubble.style.height = size + 'px';
             
-            // Posición aleatoria
             const maxX = container.clientWidth - size;
             const maxY = container.clientHeight - size;
             bubble.style.left = Math.random() * maxX + 'px';
@@ -91,7 +155,6 @@
             
             container.appendChild(bubble);
             
-            // Animación de subida
             let posY = container.clientHeight;
             const speed = Math.random() * 2 + 1;
             
@@ -112,11 +175,11 @@
             }
             
             bubble.onclick = () => {
+                if (!isGameActive) return;
                 score += 10;
                 scoreDisplay.textContent = `Puntuación: ${score}`;
                 bubble.remove();
                 
-                // Efecto de partículas al explotar
                 for (let i = 0; i < 5; i++) {
                     createParticle(
                         parseFloat(bubble.style.left) + size/2,
@@ -163,15 +226,66 @@
             moveParticle();
         }
 
-        function resetGame() {
+        function startGame() {
             score = 0;
-            scoreDisplay.textContent = `Puntuación: ${score}`;
             isGameActive = true;
+            scoreDisplay.textContent = `Puntuación: ${score}`;
             container.innerHTML = '';
+            nameInput.classList.add('hidden');
+            startBtn.classList.add('hidden');
+            stopBtn.classList.remove('hidden');
+            
+            gameInterval = setInterval(createBubble, 1000);
         }
 
-        // Crear burbujas cada cierto tiempo
-        setInterval(createBubble, 1000);
+        function stopGame() {
+            isGameActive = false;
+            clearInterval(gameInterval);
+            container.innerHTML = '';
+            startBtn.classList.remove('hidden');
+            stopBtn.classList.add('hidden');
+            nameInput.classList.remove('hidden');
+        }
+
+        function saveScore() {
+            const playerName = document.getElementById('playerName').value.trim();
+            if (!playerName) {
+                alert('Por favor ingresa tu nombre');
+                return;
+            }
+
+            const scores = JSON.parse(localStorage.getItem('bubbleScores') || '[]');
+            scores.push({
+                name: playerName,
+                score: score,
+                date: new Date().toLocaleDateString()
+            });
+
+            // Ordenar por puntuación y mantener solo los top 10
+            scores.sort((a, b) => b.score - a.score);
+            scores.splice(10);
+
+            localStorage.setItem('bubbleScores', JSON.stringify(scores));
+            loadScores();
+            nameInput.classList.add('hidden');
+            document.getElementById('playerName').value = '';
+        }
+
+        function loadScores() {
+            const scores = JSON.parse(localStorage.getItem('bubbleScores') || '[]');
+            const scoresList = document.getElementById('scoresList');
+            scoresList.innerHTML = '';
+
+            scores.forEach((score, index) => {
+                const scoreItem = document.createElement('div');
+                scoreItem.className = 'score-item';
+                scoreItem.innerHTML = `
+                    <span>${index + 1}. ${score.name}</span>
+                    <span>${score.score} puntos</span>
+                `;
+                scoresList.appendChild(scoreItem);
+            });
+        }
     </script>
 </body>
 </html>
